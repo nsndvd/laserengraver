@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 """
 based on Copyright (C) 2009 Nick Drobchenko, nick@cnc-club.ru
 based on gcode.py (C) 2007 hugomatic... 
@@ -51,7 +51,7 @@ if "errormsg" not in dir(inkex):
     inkex.errormsg = lambda msg: sys.stderr.write((unicode(msg) + "\n").encode("UTF-8"))
 
 
-def bezierslopeatt(((bx0,by0),(bx1,by1),(bx2,by2),(bx3,by3)),t):
+def bezierslopeatt(bx0,by0,bx1,by1,bx2,by2,bx3,by3,t):
     ax,ay,bx,by,cx,cy,x0,y0=bezmisc.bezierparameterize(((bx0,by0),(bx1,by1),(bx2,by2),(bx3,by3)))
     dx=3*ax*(t**2)+2*bx*t+cx
     dy=3*ay*(t**2)+2*by*t+cy
@@ -89,13 +89,9 @@ options = {}
 defaults = {
 'header': """
 G90
-T1
-M104 S0
-G28 X0 Y0
 """,
-'footer': """G0 X0.000 Y0.000 F2200
-M400
-M104 S0
+'footer': """G0 X0.000 Y0.000
+M05
 M02
 """
 }
@@ -615,7 +611,7 @@ def csplength(csp):
     total = 0
     lengths = []
     for sp in csp:
-        for i in xrange(1,len(sp)):
+        for i in range(1,len(sp)):
             l = cspseglength(sp[i-1],sp[i])
             lengths.append(l)
             total += l            
@@ -625,12 +621,12 @@ def csplength(csp):
 def csp_segments(csp):
     l, seg = 0, [0]
     for sp in csp:
-        for i in xrange(1,len(sp)):
+        for i in range(1,len(sp)):
             l += cspseglength(sp[i-1],sp[i])
             seg += [ l ] 
 
     if l>0 :
-        seg = [seg[i]/l for i in xrange(len(seg))]
+        seg = [seg[i]/l for i in range(len(seg))]
     return seg,l
 
 
@@ -641,13 +637,13 @@ def rebuild_csp (csp, segs, s=None):
     if len(s)>len(segs) : return None
     segs = segs[:]
     segs.sort()
-    for i in xrange(len(s)):
+    for i in range(len(s)):
         d = None
-        for j in xrange(len(segs)):
+        for j in range(len(segs)):
             d = min( [abs(s[i]-segs[j]),j], d) if d!=None else [abs(s[i]-segs[j]),j]
         del segs[d[1]]
-    for i in xrange(len(segs)):
-        for j in xrange(0,len(s)):
+    for i in range(len(segs)):
+        for j in range(0,len(s)):
             if segs[i]<s[j] : break
         if s[j]-s[j-1] != 0 :
             t = (segs[i] - s[j-1])/(s[j]-s[j-1])
@@ -784,13 +780,13 @@ def point_to_arc_distance(p, arc):
             if alpha>0:    alpha = alpha-math.pi2
             else: alpha = math.pi2+alpha
         if between(alpha,0,a) or min(abs(alpha),abs(alpha-a))<straight_tolerance : 
-            return (p-i).mag(), [i.x, i.y]
+            return ((p-i).mag(), (i.x, i.y))
         else : 
             d1, d2 = (p-P0).mag(), (p-P2).mag()
             if d1<d2 : 
-                return (d1, [P0.x,P0.y])
+                return (d1, (P0.x,P0.y))
             else :
-                return (d2, [P2.x,P2.y])
+                return (d2, (P2.x,P2.y))
 
 
 def csp_to_arc_distance(sp1,sp2, arc1, arc2, tolerance = 0.01 ): # arc = [start,end,center,alpha]
@@ -1119,7 +1115,7 @@ def csp_segment_convex_hull(sp1,sp2):
     if not (m1 and m2) and m3 : return [c,a,d]
     if not (m1 and m3) and m2 : return [b,c,d]
     
-    raise ValueError, "csp_segment_convex_hull happend something that shouldnot happen!"    
+    raise ValueError("csp_segment_convex_hull happend something that shouldnot happen!")
 
     
 ################################################################################
@@ -1143,7 +1139,7 @@ def bounds_intersect(a, b) :
     return not ( (a[0]>b[2]) or (b[0]>a[2]) or (a[1]>b[3]) or (b[1]>a[3]) )
 
 
-def tpoint((x1,y1),(x2,y2),t):
+def tpoint(x1,y1,x2,y2,t):
     return [x1+t*(x2-x1),y1+t*(y2-y1)]
 
 
@@ -1177,7 +1173,7 @@ def bez_normalized_slope(bez,t):
 ###    Some vector functions
 ################################################################################
     
-def normalize((x,y)) :
+def normalize(x,y) :
     l = math.sqrt(x**2+y**2)
     if l == 0 : return [0.,0.]
     else :         return [x/l, y/l]
@@ -1259,7 +1255,7 @@ def atan2(*arg):
         
         return (math.pi/2 - math.atan2(arg[0],arg[1]) ) % math.pi2
     else :
-        raise ValueError, "Bad argumets for atan! (%s)" % arg  
+        raise ValueError("Bad argumets for atan! (%s)" % arg)
 
 
 def draw_text(text,x,y,style = None, font_size = 20) :
@@ -1381,7 +1377,7 @@ class P:
             return self.x * other.x + self.y * other.y
         return P(self.x * other, self.y * other)
     __rmul__ = __mul__
-    def __div__(self, other): return P(self.x / other, self.y / other)
+    def __truediv__(self, other): return P(self.x / other, self.y / other)
     def mag(self): return math.hypot(self.x, self.y)
     def unit(self):
         h = self.mag()
@@ -1570,15 +1566,15 @@ def csp_offset(csp, r) :
     ############################################################################
     # Remove all small segments (segment length < 0.001)
 
-    for i in xrange(len(csp)) :
-        for j in xrange(len(csp[i])) :
+    for i in range(len(csp)) :
+        for j in range(len(csp[i])) :
             sp = csp[i][j]
             if (P(sp[1])-P(sp[0])).mag() < 0.001 :
                 csp[i][j][0] = sp[1]
             if (P(sp[2])-P(sp[0])).mag() < 0.001 :
                 csp[i][j][2] = sp[1]
-    for i in xrange(len(csp)) :
-        for j in xrange(1,len(csp[i])) :
+    for i in range(len(csp)) :
+        for j in range(1,len(csp[i])) :
             if cspseglength(csp[i][j-1], csp[i][j])<0.001 : 
                 csp[i] = csp[i][:j] + csp[i][j+1:]
         if cspseglength(csp[i][-1],csp[i][0])>0.001 : 
@@ -1598,11 +1594,11 @@ def csp_offset(csp, r) :
     # Offset
     ############################################################################
     # Create offsets for all segments in the path. And join them together inside each subpath.         
-    unclipped_offset = [[] for i in xrange(csp_len)]
-    offsets_original = [[] for i in xrange(csp_len)]
-    join_points = [[] for i in xrange(csp_len)]
-    intersection = [[] for i in xrange(csp_len)]
-    for i in xrange(csp_len) :
+    unclipped_offset = [[] for i in range(csp_len)]
+    offsets_original = [[] for i in range(csp_len)]
+    join_points = [[] for i in range(csp_len)]
+    intersection = [[] for i in range(csp_len)]
+    for i in range(csp_len) :
         subpath = csp[i]
         subpath_offset = []
         last_offset_len = 0
@@ -1652,14 +1648,14 @@ def csp_offset(csp, r) :
     small_tolerance = 0.01
     summ = 0
     summ1 = 0      
-    for subpath_i in xrange(csp_len) :
-        for subpath_j in xrange(subpath_i,csp_len) :
+    for subpath_i in range(csp_len) :
+        for subpath_j in range(subpath_i,csp_len) :
             subpath = unclipped_offset[subpath_i]
             subpath1 = unclipped_offset[subpath_j]
-            for i in xrange(1,len(subpath)) :
+            for i in range(1,len(subpath)) :
                 # If subpath_i==subpath_j we are looking for self intersections, so 
-                # we'll need search intersections only for xrange(i,len(subpath1))
-                for j in ( xrange(i,len(subpath1)) if subpath_i==subpath_j else xrange(len(subpath1))) :
+                # we'll need search intersections only for range(i,len(subpath1))
+                for j in ( range(i,len(subpath1)) if subpath_i==subpath_j else range(len(subpath1))) :
                     if subpath_i==subpath_j and j==i :
                         # Find self intersections of a segment
                         sp1,sp2,sp3 = csp_split(subpath[i-1],subpath[i],.5)
@@ -1697,7 +1693,7 @@ def csp_offset(csp, r) :
     # Split unclipped offset by intersection points into splitted_offset
     ########################################################################
     splitted_offset = []
-    for i in xrange(csp_len) :
+    for i in range(csp_len) :
         subpath = unclipped_offset[i]
         if len(intersection[i]) > 0 :
             parts = csp_subpath_split_by_points(subpath, intersection[i])
@@ -1840,11 +1836,11 @@ def biarc(sp1, sp2, z1, z2, depth=0):
     elif     csmall and a!=0:    beta = -b/a 
     elif not asmall:     
         discr = b*b-4*a*c
-        if discr < 0:    raise ValueError, (a,b,c,discr)
+        if discr < 0:    raise ValueError(a,b,c,discr)
         disq = discr**.5
         beta1 = (-b - disq) / 2 / a
         beta2 = (-b + disq) / 2 / a
-        if beta1*beta2 > 0 :    raise ValueError, (a,b,c,disq,beta1,beta2)
+        if beta1*beta2 > 0 :    raise ValueError(a,b,c,disq,beta1,beta2)
         beta = max(beta1, beta2)
     elif    asmall and bsmall:    
         return biarc_split(sp1, sp2, z1, z2, depth)
@@ -1863,7 +1859,7 @@ def biarc(sp1, sp2, z1, z2, depth=0):
         alpha =  (p2a - p0a) % (2*math.pi)                    
         if (p0a<p2a and  (p1a<p0a or p2a<p1a))    or    (p2a<p1a<p0a) : 
             alpha = -2*math.pi+alpha 
-        if abs(R.x)>1000000 or abs(R.y)>1000000  or (R-P0).mag<.1 :
+        if abs(R.x)>1000000 or abs(R.y)>1000000  or (R-P0).mag()<.1 :
             return None, None
         else :    
             return  R, alpha
@@ -2208,7 +2204,7 @@ class Polygon:
         
         while len(edges)>0 :
             poly = []
-            if loops > len_edges  : raise ValueError, "Hull error"
+            if loops > len_edges  : raise ValueError("Hull error")
             loops+=1
             # Find left most vertex.
             start = (1e100,1)
@@ -2219,7 +2215,7 @@ class Polygon:
             loops1 = 0
             while (last[1]!=start[0] or first_run) :     
                 first_run = False
-                if loops1 > len_edges  : raise ValueError, "Hull error"
+                if loops1 > len_edges  : raise ValueError("Hull error")
                 loops1 += 1
                 next = get_closes_edge_by_angle(edges[last[1]],last)
                 #draw_pointer(next[0]+next[1],"Green","line", comment=i, width= 1)
@@ -2441,16 +2437,19 @@ class Laserengraver(inkex.Effect):
             
 
             ### Sort to reduce Rapid distance    
-            k = range(1,len(p))
+            k = list(range(1,len(p)))
             keys = [0]
             while len(k)>0:
                 end = p[keys[-1]][-1][1]
                 dist = None
                 for i in range(len(k)):
                     start = p[k[i]][0][1]
-                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
+                    if (dist == None):
+                        dist =( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)
+                    else:
+                        dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
                 keys += [k[dist[1]]]
-                del k[dist[1]]
+                del k[dist[1]]  
             for k in keys:
                 subpath = p[k]
                 c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
@@ -2649,7 +2648,7 @@ class Laserengraver(inkex.Effect):
             s, si = curve[i-1], curve[i]
             feed = f if lg not in ['G01','G02','G03'] else ''
             if s[1]    == 'move':
-                g += "G0" + c(si[0]) + " F2200\n" + tool['gcode before path'] + "\n"
+                g += "G0" + c(si[0]) + "\n" + tool['gcode before path'] + "\n"
                 lg = 'G00'
             elif s[1] == 'end':
                 g += tool['gcode after path'] + "\n"
@@ -2770,9 +2769,9 @@ class Laserengraver(inkex.Effect):
 
     def transform_csp(self, csp_, layer, reverse = False):
         csp = [  [ [csp_[i][j][0][:],csp_[i][j][1][:],csp_[i][j][2][:]]  for j in range(len(csp_[i])) ]   for i in range(len(csp_)) ]
-        for i in xrange(len(csp)):
-            for j in xrange(len(csp[i])): 
-                for k in xrange(len(csp[i][j])): 
+        for i in range(len(csp)):
+            for j in range(len(csp[i])): 
+                for k in range(len(csp[i][j])): 
                     csp[i][j][k] = self.transform(csp[i][j][k],layer, reverse)
         return csp
     
@@ -2974,7 +2973,7 @@ class Laserengraver(inkex.Effect):
             i=0        
             out=[]
             for p in points:
-                for j in xrange(i,len(points)):
+                for j in range(i,len(points)):
                     if p==points[j]: points[j]=[None,None]    
                 if p!=[None,None]: out+=[p]
             i+=1
@@ -2983,7 +2982,7 @@ class Laserengraver(inkex.Effect):
     
         def get_way_len(points):
             l=0
-            for i in xrange(1,len(points)):
+            for i in range(1,len(points)):
                 l+=math.sqrt((points[i][0]-points[i-1][0])**2 + (points[i][1]-points[i-1][1])**2)
             return l
 
@@ -3009,7 +3008,7 @@ class Laserengraver(inkex.Effect):
             for w in ways:
                 tpoints=points[:]
                 cw=[]
-                for j in xrange(0,len(points)):
+                for j in range(0,len(points)):
                     p=get_boundaries(get_boundaries(tpoints)[w[0]])[w[1]]
                     tpoints.remove(p[0])
                     cw+=p
@@ -3030,7 +3029,7 @@ class Laserengraver(inkex.Effect):
         self.check_dir() 
         gcode = ""
 
-        biarc_group = inkex.etree.SubElement( self.selected_paths.keys()[0] if len(self.selected_paths.keys())>0 else self.layers[0], inkex.addNS('g','svg') )
+        biarc_group = inkex.etree.SubElement( list(self.selected_paths.keys())[0] if len(self.selected_paths.keys())>0 else self.layers[0], inkex.addNS('g','svg') )
         print_(("self.layers=",self.layers))
         print_(("paths=",paths))
         for layer in self.layers :
@@ -3081,7 +3080,7 @@ class Laserengraver(inkex.Effect):
             translate = [0,0]
 
         # doc height in pixels (38 mm == 134.64566px)
-        doc_height = inkex.unittouu(self.document.getroot().get('height'))
+        doc_height =self.unittouu(self.document.getroot().xpath('@height', namespaces=inkex.NSS)[0])
 
         if self.document.getroot().get('height') == "100%" :
             doc_height = 1052.3622047
@@ -3149,12 +3148,12 @@ class Laserengraver(inkex.Effect):
             except :
                 print_  = lambda *x : None 
         else : print_  = lambda *x : None 
-        if self.options.active_tab not in ['"Laser"', '"orientation"']:
+        if self.options.active_tab not in ['Laser', 'orientation']:
             self.error(_("Select the active tab - Laser."),"error")
         else:
             # Get all Gcodetools data from the scene.
             self.get_info()
-            if self.options.active_tab == '"Laser"':
+            if self.options.active_tab == 'Laser':
                 if self.orientation_points == {} :
                     self.error(_("Orientation points have not been defined! A default set of orientation points has been automatically added."),"warning")
                     self.orientation( self.layers[min(0,len(self.layers)-1)] )        
@@ -3171,8 +3170,8 @@ class Laserengraver(inkex.Effect):
                     "feed": self.options.engraving_laser_speed,
                     "in trajectotry": "",
                     "out trajectotry": "",
-                    "gcode before path": "\nM400\nM104 S100",
-                    "gcode after path": "M400\nM104 S0\n",
+                    "gcode before path": "\nM03",
+                    "gcode after path": "M05\n",
                     "sog": "",
                     "spinlde rpm": "",
                     "CW or CCW": "",
